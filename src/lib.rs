@@ -28,7 +28,7 @@ pub extern "C" fn run_tmo(
     let prev_lum = unsafe { *lum };
     let encoder = hdr_encoder::HdrEncoder::new(width, height, y_slice, u_slice, v_slice);
     let (new_y, curr_lum) = encoder.encode(prev_lum);
-    println!("{}", new_y[34534]);
+    // println!("{}", new_y[34534]);
     unsafe {
         let buffer = new_y.as_ptr();
         *lum = curr_lum;

@@ -56,7 +56,7 @@ impl HdrEncoder {
 
         let alpha = 0.72;
         let scalar = alpha / lum;
-        println!("{} {} {}", alpha, lum, scalar);
+        // println!("{} {} {}", alpha, lum, scalar);
 
         luminances.par_iter_mut().for_each(|l| {
             *l = *l * scalar;
