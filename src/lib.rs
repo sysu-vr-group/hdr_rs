@@ -13,10 +13,10 @@ pub extern "C" fn print_hello_from_rust() {
 
 #[no_mangle]
 pub extern "C" fn run_tmo(width: u32, height: u32, y: *mut u8, u: *const u8, v: *const u8) {
-    let length = (width * height )as usize;
-    let y_slice = unsafe {std::slice::from_raw_parts_mut(y, length)};
-    let u_slice = unsafe {std::slice::from_raw_parts(u, length)};
-    let v_slice = unsafe {std::slice::from_raw_parts(v, length)};
+    let length = (width * height) as usize;
+    let y_slice = unsafe { std::slice::from_raw_parts_mut(y, length) };
+    let u_slice = unsafe { std::slice::from_raw_parts(u, length) };
+    let v_slice = unsafe { std::slice::from_raw_parts(v, length) };
 
     let encoder = hdr_encoder::HdrEncoder::new(width, height, y_slice, u_slice, v_slice);
     let new_y = encoder.encode();

@@ -1,26 +1,17 @@
-use image;
 use rayon::prelude::*;
 pub struct HdrEncoder {
     pub width: u32,
     pub height: u32,
-    pub frame: image::RgbImage,
+    pub frame: Vec<f32>,
 }
 
 impl HdrEncoder {
-    pub fn new(width: u32, height: u32, y: &[u8], u: &[u8], v: &[u8]) -> Self {
-        let mut img = image::RgbImage::new(width, height);
-        for y_ in 0..height {
-            for x in 0..width {
-                let index = (y_ * width + x) as usize;
-                let rgb = Self::yuv_to_rgb(y[index], u[index], v[index]);
-                let pixel = image::Rgb(rgb);
-                img.put_pixel(x, y_, pixel);
-            }
-        }
+    pub fn new(width: u32, height: u32, y: &[u8], _u: &[u8], _v: &[u8]) -> Self {
+        let frame = y.par_iter().map(|e| {*e as f32 / 255.0}).collect();
         Self {
             width,
             height,
-            frame: img,
+            frame,
         }
     }
 
@@ -49,24 +40,17 @@ impl HdrEncoder {
         [y, u, v]
     }
 
-    pub fn encode(&self) -> Vec<u8> {
-        use image::Pixel;
-        let mut luminance_sum = 0.0;
-        let img = &self.frame;
+    pub fn encode(self) -> Vec<u8> {
         let minima = 0.0000001;
-        let mut luminances = Vec::with_capacity((self.width * self.height) as usize);
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let pixel = img.get_pixel(x, y).channels();
-                let luminance = Self::rgb_to_luminance(pixel[0], pixel[1], pixel[2]) / 255.0;
-                luminances.push(luminance);
-                luminance_sum += (luminance + minima).log(10.0);
-            }
-        }
+        let mut luminances = self.frame;
+        let luminance_sum = luminances.par_iter().map(|l| {
+            (*l + minima).log(10.0)
+        }).sum::<f32>();
+        
         let lum = (luminance_sum / (self.width * self.height) as f32).exp();
         let alpha = 0.6;
         let scalar = alpha / lum;
-        
+
         luminances.par_iter_mut().for_each(|l| {
             *l *= scalar;
         });
@@ -76,10 +60,6 @@ impl HdrEncoder {
             *l = (*l * (1.0 + *l / luminance_max.powi(2))) / (1.0 + *l);
         });
 
-
-
-
-
-        luminances.into_iter().map(|l| (l * 255.0) as u8).collect()
+        luminances.into_par_iter().map(|l| (l * 255.0) as u8).collect()
     }
 }
