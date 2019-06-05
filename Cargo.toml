@@ -1,0 +1,15 @@
+[package]
+name = "hdr_rs"
+version = "0.1.0"
+authors = ["Miguel Chan <vvchan@outlook.com>"]
+edition = "2018"
+
+[lib]
+name = "hdr_rs"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+image = "0.21"
+rayon = "1.0.3"
+libc = "0.2.0"
+
