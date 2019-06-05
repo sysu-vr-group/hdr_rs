@@ -19,7 +19,8 @@ int main() {
         v.push_back(src(x, y_, 2) * 255);
     }
     clock_t start = clock();
-    run_tmo(src.width(), src.height(), y.data(), u.data(), v.data());
+    float lum = -1;
+    run_tmo(src.width(), src.height(), y.data(), u.data(), v.data(), &lum);
     cout << "TMO Time: " << double(clock() - start) / CLOCKS_PER_SEC << endl;
     cimg_forXY(src, x, y_) {
         src(x, y_, 0) = float(y.at(y_*src.width()+x)) / 255;
