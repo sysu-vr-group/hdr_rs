@@ -48,18 +48,20 @@ impl HdrEncoder {
         }).sum::<f32>();
         
         let lum = (luminance_sum / (self.width * self.height) as f32).exp();
-        let alpha = 0.6;
+
+        let alpha = 0.72;
         let scalar = alpha / lum;
+        println!("{} {} {}", alpha, lum, scalar);
 
         luminances.par_iter_mut().for_each(|l| {
-            *l *= scalar;
+            *l = *l * scalar;
         });
 
-        let luminance_max = 1.0 as f32;
+        let luma_white = 1e10 as f32;
         luminances.par_iter_mut().for_each(|l| {
-            *l = (*l * (1.0 + *l / luminance_max.powi(2))) / (1.0 + *l);
+            *l = (*l * (1.0 + *l / luma_white.powi(2))) / (1.0 + *l);
         });
 
-        luminances.into_par_iter().map(|l| (l * 255.0) as u8).collect()
+        luminances.into_par_iter().map(|l| (l * 255.0).min(255.0).max(0.0) as u8).collect()
     }
 }
