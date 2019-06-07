@@ -8,8 +8,8 @@
 using namespace cimg_library;
 using namespace std;
 
-int main() {
-    CImg<float> src("../test.jpg");
+int main(int c, char** gv) {
+    CImg<float> src(c == 2 ? gv[1] : "../test.jpg");
     src.save("../origin.bmp");
     src.RGBtoYUV();
     vector<unsigned char> y,u,v;
@@ -22,8 +22,8 @@ int main() {
     float lum = -1;
     run_tmo(src.width(), src.height(), y.data(), u.data(), v.data(), &lum);
     cout << lum << endl;
-    run_tmo(src.width(), src.height(), y.data(), u.data(), v.data(), &lum);
-    cout << lum << endl;
+    // run_tmo(src.width(), src.height(), y.data(), u.data(), v.data(), &lum);
+    // cout << lum << endl;
     cout << "TMO Time: " << double(clock() - start) / CLOCKS_PER_SEC << endl;
     cimg_forXY(src, x, y_) {
         src(x, y_, 0) = float(y.at(y_*src.width()+x)) / 255;
