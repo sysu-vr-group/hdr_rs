@@ -44,7 +44,7 @@ impl HdrEncoder {
 
     pub fn encode_v2(self, prev_lum: f32) -> (Vec<u8>, f32) {
         // Set params
-        let Lmax = 2.5;
+        let Lmax = 0.8;
         let Lwhite = Lmax;
         let mut luminances = self.frame;
 
