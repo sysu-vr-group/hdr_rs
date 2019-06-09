@@ -46,24 +46,18 @@ impl HdrEncoder {
         // Set params
         let Lmax = 2.5;
         let Lwhite = Lmax;
-
         let mut luminances = self.frame;
-        luminances.par_iter_mut().map(|l| {
+
+        luminances.par_iter_mut().for_each(|l| {
             *l = 0.5 * Lmax * Lwhite * ((*l - 1.0) + ((1.0 - *l).powi(2) + (*l * 4.0) / (Lwhite * Lwhite)).sqrt())
         });
-
-        let mut lum = (luminance_sum / (self.width * self.height) as f32).exp();
-
-        if prev_lum >= 0.0 {
-            lum = 0.6 * lum + 0.4 * prev_lum;
-        }
 
         (
             luminances
                 .into_par_iter()
                 .map(|l| (l * 255.0) as u8)
                 .collect(),
-            lum,
+            0.0,
         )
     }
 
