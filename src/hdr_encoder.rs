@@ -26,9 +26,7 @@ impl HdrEncoder {
     }
 
     pub fn new(width: u32, height: u32, y: &[u8], u: &[u8], v: &[u8]) -> Self {
-        let frame = y.par_iter().enumerate().map(|(index, _)| {
-            Self::yuv_to_hsv(y[index], u[index], v[index])
-        }).collect();
+        let frame = y.par_iter().map(|e| *e as f32 / 255.0).collect();
 
         Self {
             width,
