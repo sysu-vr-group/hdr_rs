@@ -8,8 +8,28 @@ pub struct HdrEncoder {
 }
 
 impl HdrEncoder {
-    pub fn new(width: u32, height: u32, y: &[u8], _u: &[u8], _v: &[u8]) -> Self {
-        let frame = y.par_iter().map(|e| *e as f32 / 255.0).collect();
+    #[inline]
+    pub fn inRange(index: usize, left: usize, right: usize) -> bool {
+        index >= left && index < right
+    }
+
+    #[inline]
+    pub fn yuv_to_hsv(y: u8, u: u8, v: u8) -> f32 {
+        let d = u as f32 - 128.0;
+        let e = v as f32 - 128.0;
+        let r = (y as f32 + (1.13983 * e)).min(255.0).max(0.0);
+        let g = (y as f32 - (0.39465 * d + 0.58060 * e as f32))
+            .min(255.0)
+            .max(0.0);
+        let b = (y as f32 + (2.03211 * d)).min(255.0).max(0.0);
+        *[r / 255.0, g / 255.0, b / 255.0].iter().max_by(|a, b| {a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)}).unwrap()
+    }
+
+    pub fn new(width: u32, height: u32, y: &[u8], u: &[u8], v: &[u8]) -> Self {
+        let frame = y.par_iter().enumerate().map(|(index, _)| {
+            Self::yuv_to_hsv(y[index], u[index], v[index])
+        }).collect();
+
         Self {
             width,
             height,
@@ -17,43 +37,86 @@ impl HdrEncoder {
         }
     }
 
-    #[inline]
-    pub fn yuv_to_rgb(y: u8, u: u8, v: u8) -> [u8; 3] {
-        let d = u as f32 - 128.0;
-        let e = v as f32 - 128.0;
-        let r = (y as f32 + (1.13983 * e)).min(255.0).max(0.0) as u8;
-        let g = (y as f32 - (0.39465 * d + 0.58060 * e as f32))
-            .min(255.0)
-            .max(0.0) as u8;
-        let b = (y as f32 + (2.03211 * d)).min(255.0).max(0.0) as u8;
-        [r, g, b]
-    }
-
-    #[inline]
-    pub fn rgb_to_luminance(r: u8, g: u8, b: u8) -> f32 {
-        0.299 * (r as f32) + 0.587 * (g as f32) + 0.114 * (b as f32)
-    }
-
-    #[inline]
-    pub fn rgb_to_yuv(r: u8, g: u8, b: u8) -> [u8; 3] {
-        let y = Self::rgb_to_luminance(r, g, b) as u8;
-        let u = (r as f32 * -0.169 - g as f32 * 0.331 + b as f32 * 0.5 + 128.0) as u8;
-        let v = (r as f32 * 0.5 - g as f32 * 0.419 - b as f32 * 0.081 + 128.0) as u8;
-        [y, u, v]
-    }
-
     pub fn encode_v2(self, prev_lum: f32) -> (Vec<u8>, f32) {
         // Set params
-        let Lmax = 0.8;
-        let Lwhite = Lmax;
-        let mut luminances = self.frame;
+        let Lmax = 2.5;
+        let mut inverse_lum = self.frame.clone();
+        let mut filter_lum = self.frame.clone();
+        let mut result_lum = self.frame.clone();
 
-        luminances.par_iter_mut().for_each(|l| {
-            *l = 0.5 * Lmax * Lwhite * ((*l - 1.0) + ((1.0 - *l).powi(2) + (*l * 4.0) / (Lwhite * Lwhite)).sqrt())
+        // Inverse tone-mapping
+        inverse_lum.par_iter_mut().for_each(|l| {
+            *l = 0.5 * Lmax * Lmax * ((*l - 1.0) + ((1.0 - *l).powi(2) + (*l * 4.0) / (Lmax * Lmax)).sqrt())
+        });
+
+        // Threshold filtering
+        let threshold_rate = 0.95;
+        let kernel_size = 5;
+        let max_light = self.frame.iter().max_by(|a, b| {a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)}).unwrap();
+        let filter_rate = max_light * threshold_rate;
+
+        filter_lum.par_iter_mut().for_each(|l| {
+            if *l < filter_rate {
+                *l = 0.0;
+            }
+        });
+
+        // Signle point rusting
+        let temp_result: Vec<f32> = filter_lum.par_iter().enumerate().map(|(index, l)| {
+            let mut res_ele = *l;
+            if *l >= 0.0 && *l <= 1.0 {
+                let core_indexes = [index - self.width as usize, index as usize, index + self.width as usize];
+                let mut isZero = false;
+                for id in core_indexes.iter() {
+                    let (left, right) = (id-1, id+1);
+                    // Out of range judging
+                    let length = self.frame.len();
+                    if Self::inRange(left, 0, length) && Self::inRange(right, 0, length) && Self::inRange(*id, 0, length) {
+                        if filter_lum[left] == 0.0 || filter_lum[right] == 0.0 || filter_lum[*id] == 0.0 {
+                            res_ele = 0.0;
+                            break;
+                        }
+                    }
+                }
+            }
+            else {
+                if res_ele < 0.0 {
+                    res_ele = 0.0;
+                }
+                if res_ele > 1.0 {
+                    res_ele = 1.0;
+                }
+            }
+            res_ele
+        }).collect();
+
+        filter_lum = temp_result;
+
+        // Perform gaussian filtering
+
+
+        // Merge results
+        let min_light = self.frame.iter().min_by(|a, b| {a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)}).unwrap();
+        let (sigma, belta, gamma, delta) = (0.5, 2.0, 0.7, 0.02);
+
+        result_lum.par_iter_mut().enumerate().for_each(|(index, l)| {
+            if inverse_lum[index] < belta * min_light {
+                *l = sigma * inverse_lum[index];
+            } 
+            else {
+                *l = gamma * inverse_lum[index] + delta * filter_lum[index];
+            }
+            // Overlap filtering
+            if *l > 1.0 {
+                *l = 1.0;
+            }   
+            if *l < 0.0 {
+                *l = 0.0;
+            }
         });
 
         (
-            luminances
+            result_lum
                 .into_par_iter()
                 .map(|l| (l * 255.0) as u8)
                 .collect(),
