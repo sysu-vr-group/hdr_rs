@@ -51,7 +51,6 @@ impl HdrEncoder {
 
         // Threshold filtering
         let threshold_rate = 0.95;
-        let kernel_size = 5;
         let max_light = self.frame.iter().max_by(|a, b| {a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)}).unwrap();
         let filter_rate = max_light * threshold_rate;
 
@@ -93,7 +92,31 @@ impl HdrEncoder {
         filter_lum = temp_result;
 
         // Perform gaussian filtering
+        let gaussian_kernel = vec![1,4,7,4,1,4,16,26,16,4,7,26,41,26,7,4,16,26,16,4,1,4,7,4,1];
+        let kernel_weight: Vec<i32> = vec![-2, -1, 0, 1, 2];
 
+        let gauss_result: Vec<f32> = filter_lum.par_iter().enumerate().map(|(index, l)| {
+            let row = index as u32 / self.width;
+            let col = index as u32 - row * self.width;
+            let mut sum = 0.0;
+            let mut gauss_res = *l;
+
+            if row >= 2 && col >= 2 && row < self.height- 2 && col < self.width - 2 {
+                for i in kernel_weight.iter() {
+                    for j in kernel_weight.iter() {
+                        sum += filter_lum[(index as i32 + *i * self.width as i32 + *j as i32) as usize];
+                    }
+                }
+                sum /= 273.0;
+                if sum > 255.0 {
+                    sum = 255.0;
+                }
+                gauss_res = sum;
+            }
+            gauss_res
+        }).collect();
+
+        filter_lum = gauss_result;
 
         // Merge results
         let min_light = self.frame.iter().min_by(|a, b| {a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)}).unwrap();
