@@ -25,7 +25,7 @@ impl HdrEncoder {
         *[r / 255.0, g / 255.0, b / 255.0].iter().max_by(|a, b| {a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)}).unwrap()
     }
 
-    pub fn new(width: u32, height: u32, y: &[u8], u: &[u8], v: &[u8]) -> Self {
+    pub fn new(width: u32, height: u32, y: &[u8], _u: &[u8], _v: &[u8]) -> Self {
         let frame = y.par_iter().map(|e| *e as f32 / 255.0).collect();
 
         Self {
@@ -35,7 +35,7 @@ impl HdrEncoder {
         }
     }
 
-    pub fn encode_v2(self, prev_lum: f32) -> (Vec<u8>, f32) {
+    pub fn encode_v2(self, _prev_lum: f32) -> (Vec<u8>, f32) {
         // Set params
         let Lmax = 2.5;
         let mut inverse_lum = self.frame.clone();
@@ -63,7 +63,7 @@ impl HdrEncoder {
             let mut res_ele = *l;
             if *l >= 0.0 && *l <= 1.0 {
                 let core_indexes = [index - self.width as usize, index as usize, index + self.width as usize];
-                let mut isZero = false;
+                let _isZero = false;
                 for id in core_indexes.iter() {
                     let (left, right) = (id-1, id+1);
                     // Out of range judging
@@ -90,7 +90,7 @@ impl HdrEncoder {
         filter_lum = temp_result;
 
         // Perform gaussian filtering
-        let gaussian_kernel = vec![1,4,7,4,1,4,16,26,16,4,7,26,41,26,7,4,16,26,16,4,1,4,7,4,1];
+        let _gaussian_kernel = vec![1,4,7,4,1,4,16,26,16,4,7,26,41,26,7,4,16,26,16,4,1,4,7,4,1];
         let kernel_weight: Vec<i32> = vec![-2, -1, 0, 1, 2];
 
         let gauss_result: Vec<f32> = filter_lum.par_iter().enumerate().map(|(index, l)| {
