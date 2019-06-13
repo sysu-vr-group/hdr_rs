@@ -24,11 +24,16 @@ pub extern "C" fn run_tmo(
     let y_slice = unsafe { std::slice::from_raw_parts_mut(y, length) };
     let u_slice = unsafe { std::slice::from_raw_parts(u, length) };
     let v_slice = unsafe { std::slice::from_raw_parts(v, length) };
-
+    let i_max = y_slice.iter().max().unwrap();
+    let i_min = y_slice.iter().min().unwrap();
+    println!("range before: {}, {}, {}", i_max, i_min, (*i_max as f32 / (*i_min as f32 + 0.0001)).log(10.0));
     let prev_lum = unsafe { *lum };
     let encoder = hdr_encoder::HdrEncoder::new(width, height, y_slice, u_slice, v_slice);
     let (new_y, curr_lum) = encoder.encode_v2(prev_lum);
     // println!("{}", new_y[34534]);
+    let i_max = new_y.iter().max().unwrap();
+    let i_min = new_y.iter().min().unwrap();
+    println!("range after: {}, {}, {}", i_max, i_min, (*i_max as f32 / (*i_min as f32 + 0.0001)).log(10.0));
     unsafe {
         let buffer = new_y.as_ptr();
         *lum = curr_lum;

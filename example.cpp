@@ -10,8 +10,10 @@ using namespace std;
 
 int main(int c, char** gv) {
     CImg<float> src(c == 2 ? gv[1] : "../test.jpg");
+    cout << src(1,2,0) << " " << src(1,2,1) << " " << src(1,2,2) << endl;
     src.save("../origin.bmp");
     src.RGBtoYUV();
+    // cout << src(1,2,0) << " " << src(1,2,1) << " " << src(1,2,2) << endl;
     vector<unsigned char> y,u,v;
     cimg_forXY(src, x, y_) {
         y.push_back(src(x, y_, 0) * 255);
