@@ -77,12 +77,7 @@ impl HdrEncoder {
                 }
             }
             else {
-                if res_ele < 0.0 {
-                    res_ele = 0.0;
-                }
-                if res_ele > 1.0 {
-                    res_ele = 1.0;
-                }
+                res_ele = res_ele.min(1.0).max(0.0);
             }
             res_ele
         }).collect();
@@ -106,9 +101,7 @@ impl HdrEncoder {
                     }
                 }
                 sum /= 273.0;
-                if sum > 255.0 {
-                    sum = 255.0;
-                }
+                sum = sum.min(255.0);
                 gauss_res = sum;
             }
             gauss_res
@@ -128,12 +121,7 @@ impl HdrEncoder {
                 *l = gamma * inverse_lum[index] + delta * filter_lum[index];
             }
             // Overlap filtering
-            if *l > 1.0 {
-                *l = 1.0;
-            }   
-            if *l < 0.0 {
-                *l = 0.0;
-            }
+            *l = l.min(1.0).max(0.0);
         });
 
         (
