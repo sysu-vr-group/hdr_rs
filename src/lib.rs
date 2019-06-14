@@ -7,6 +7,14 @@ pub extern "C" fn dinput(input: i32) -> i32 {
 }
 
 #[no_mangle]
+pub extern "C" fn set_num_threads(nthreads: i32) {
+    use rayon::ThreadPoolBuilder;
+    let tpb = ThreadPoolBuilder::new();
+    let tpb = tpb.num_threads(nthreads as usize);
+    tpb.build_global().unwrap();
+}
+
+#[no_mangle]
 pub extern "C" fn print_hello_from_rust() {
     println!("Hello from Rust");
 }
